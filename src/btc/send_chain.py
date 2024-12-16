@@ -14,7 +14,7 @@ def get_data():
     data = response.json()
 
     today = datetime.now().strftime("%Y-%m-%d")
-    folder_path = "whale_activity"
+    folder_path = "data/whale_activity"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
