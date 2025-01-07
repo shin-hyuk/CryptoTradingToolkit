@@ -55,7 +55,7 @@ def get_trends():
         last_30_days = last_30_days_values[crypto]
         last_30_days_change = ((today - last_30_days) / last_30_days) * 100
 
-        msg += f"{crypto:<10}{share:>10.2f}%{yesterday_change:>15.2f}%{last_30_days_change:>15.2f}%\n"
+        msg += f"{crypto:<10}{share:>10.2f}%{('+' if yesterday_change > 0 else '')}{yesterday_change:>15.2f}%{('+' if last_30_days_change > 0 else '')}{last_30_days_change:>15.2f}%\n"
 
     msg += "```"
     return msg
