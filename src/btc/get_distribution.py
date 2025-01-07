@@ -72,7 +72,7 @@ def generate_message(data):
         "Last 30 Days": last_30_days_changes,
     })
 
-    msg = f"📊 *Bitcoin Distribution Table ({pd.Timestamp.now().strftime('%d %b %Y')})*\n\n"
+    msg = f"📊 *Bitcoin Distribution Table*\n\n"
     msg += f"```\n{'BTC Addresses':<20}{'# BTC Held Today':<20}{'Today':<10}{'Yesterday':<15}{'Last 30 Days':<15}\n"
     msg += "-" * 77 + "\n"
 
@@ -89,7 +89,7 @@ def generate_message(data):
 
     return msg
 
-async def send_distribution():
+def get_distribution():
     data = get_data()
     msg = generate_message(data)
-    await telegram.send_message(msg)
+    return msg

@@ -14,7 +14,8 @@ def get_data():
         entry.pop("time_until_update", None)
     return data
 
-def generate_message(data):
+def get_greed_fear_index():
+    data = get_data()
     today_data, yesterday_data = data[0], data[1]
     today_index, yesterday_index = int(today_data['value']), int(yesterday_data['value'])
     today_grade = today_data['value_classification'].lower()
@@ -29,18 +30,12 @@ def generate_message(data):
     today_grade = " ".join(word.capitalize() for word in today_grade.split())
 
     if "fear" in today_grade.lower():
-        text = f"**🟩 {today_grade}** - {change}"
+        text = f"**🟢 {today_grade}** - {change}"
     elif "greed" in today_grade.lower():
-        text = f"**🟥 {today_grade}** - {change}"
+        text = f"**🔴 {today_grade}** - {change}"
     else:
         text = f"**{today_grade}** - {change}"
 
-    msg = f"⚖️ *Fear and Greed Index*\n"
-    msg += f"{text}\n"
+    msg = f"{text}"
 
-    return msg
-
-def get_greed_fear_index():
-    data = get_data()
-    msg = generate_message(data)
     return msg

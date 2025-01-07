@@ -1,2 +1,3 @@
-from .send_distribution import send_distribution
-from .send_chain import send_chain
+from .get_whales import get_whales
+from .get_chain import get_chain
+from .get_distribution import get_distribution
