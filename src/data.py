@@ -1,64 +1,39 @@
-import smtplib
-import zipfile
 import os
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
+import json
+from firebase_admin import firestore, credentials, initialize_app
 
-# Gmail credentials
-GMAIL_USERNAME = "shinhyuk.contact"  # Replace with your Gmail address (without "@gmail.com")
-GMAIL_APP_PASSWORD = "mpinjlrloudqgxqp"  # Replace with your Gmail App Password
+# Initialize Firebase
+cred = credentials.Certificate("./credentials.json")  # Replace with your Firebase credentials JSON file
+initialize_app(cred)
 
-# Recipients
-recipients = ["shinhyuk.contact@gmail.com"]
+# Firestore client
+db = firestore.client()
 
-# Function to zip whale activity files
-def create_zip_file(folder_path, output_path):
-    """Create a zip file containing all files in the specified folder."""
-    with zipfile.ZipFile(output_path, 'w') as zipf:
-        for file in os.listdir(folder_path):
-            file_path = os.path.join(folder_path, file)
-            if os.path.isfile(file_path):
-                zipf.write(file_path, os.path.basename(file_path))
+# Define the collection name
+COLLECTION_NAME = "whale_activity"
 
-# Paths
-whale_activity_folder = "data/whale_activity"
-zipped_file_path = "data/whale_activity.zip"
+# Path to the local data folder
+DATA_FOLDER = "data/whale_activity"
 
-# Create the zip file
-if not os.path.exists(whale_activity_folder):
-    print("Whale activity folder does not exist.")
-else:
-    create_zip_file(whale_activity_folder, zipped_file_path)
+# Convert .txt files to JSON and upload to Firestore
+def convert_and_upload_txt_to_firestore():
+    for filename in os.listdir(DATA_FOLDER):
+        if filename.endswith(".txt"):
+            txt_path = os.path.join(DATA_FOLDER, filename)
 
-# Create the email
-msg = MIMEMultipart()
-msg["Subject"] = "Crypto Data"
-msg["To"] = ", ".join(recipients)
-msg["From"] = f"{GMAIL_USERNAME}@gmail.com"
+            # Derive the document ID from the file name
+            document_id = filename.replace(".txt", "")
 
-# Attach the zip file
-if os.path.exists(zipped_file_path):
-    with open(zipped_file_path, "rb") as attachment:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment.read())
-        encoders.encode_base64(part)
-        part.add_header(
-            "Content-Disposition",
-            f"attachment; filename={os.path.basename(zipped_file_path)}",
-        )
-        msg.attach(part)
-else:
-    print("Zipped whale activity file does not exist.")
+            # Read the .txt file content
+            with open(txt_path, "r") as file:
+                file_content = file.read()
 
-# Send the email
-try:
-    # Connect to Gmail SMTP server
-    smtp_server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-    smtp_server.login(GMAIL_USERNAME, GMAIL_APP_PASSWORD)
-    smtp_server.sendmail(msg["From"], recipients, msg.as_string())
-    smtp_server.quit()
-    print("Email sent successfully.")
-except Exception as e:
-    print(f"Failed to send email. Error: {e}")
+            # Parse the content as JSON
+            data = json.loads(file_content.replace("'", "\""))
+
+            # Upload data to Firestore
+            db.collection(COLLECTION_NAME).document(document_id).set(data)
+            print(f"Uploaded '{filename}' to Firestore as document ID '{document_id}'.")
+
+if __name__ == "__main__":
+    convert_and_upload_txt_to_firestore()

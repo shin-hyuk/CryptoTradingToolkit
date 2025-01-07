@@ -1,21 +1,20 @@
 import requests
-import telegram
 from datetime import datetime, timedelta
+from firebase_admin import firestore, credentials, initialize_app
 import os
-from utils import telegram_utils as telegram
-import json
 
 
 URL = "https://timechainindex.com/api/entities/entities"
-DATA_FOLDER = "data/whale_activity"
+cred = credentials.Certificate(os.path.join(os.path.dirname(__file__), "../credentials.json"))
+initialize_app(cred)
+db = firestore.client()
+COLLECTION = "whale_activity"
 
 def get_data():
     response = requests.get(URL)
     data = response.json()
     date = data['Date'].split(' ')[0]
-    filename = os.path.join(DATA_FOLDER, f"{date}.txt")
-    with open(filename, 'w') as file:
-        file.write(str(data))
+    db.collection(COLLECTION).document(date).set(data)
 
     return data, date
 
@@ -34,8 +33,9 @@ def format_large_number_with_sign(value, add_sign=True):
 def generate_message(recent_data, recent_date):
     recent_date = datetime.strptime(recent_date, "%Y-%m-%d")
     dates = []
-    for file in os.listdir(DATA_FOLDER):
-        dates.append(datetime.strptime(file.replace(".txt", ""), "%Y-%m-%d"))
+    docs = db.collection(COLLECTION).stream()
+    for doc in docs:
+        dates.append(datetime.strptime(doc.id, "%Y-%m-%d"))
     dates.sort()
 
     files = []    
@@ -67,14 +67,13 @@ def generate_message(recent_data, recent_date):
     for tag in column_data:
         top_entities = column_data[tag]
         for file_date in files:
-            file_path = os.path.join(DATA_FOLDER, f"{file_date.strftime('%Y-%m-%d')}.txt")
+            file_doc = db.collection(COLLECTION).document(file_date.strftime('%Y-%m-%d')).get()
 
-            with open(file_path, 'r') as file:
-                file_data = json.loads(file.read().replace("'", '"'))
-                file_entities = {e.get("Entity"): e.get("RemainingBalance") for t in file_data.get("Tags", []) if t["Tag"] == tag for e in t.get("Entities", [])}
+            file_data = file_doc.to_dict()
+            file_entities = {e.get("Entity"): e.get("RemainingBalance") for t in file_data.get("Tags", []) if t["Tag"] == tag for e in t.get("Entities", [])}
 
-                for entity in top_entities:
-                    top_entities[entity].append(file_entities.get(entity, None))
+            for entity in top_entities:
+                top_entities[entity].append(file_entities.get(entity, None))
 
 
     msg = f"🐋 *Big Whale Activity (AS OF {recent_date.strftime('%b %d').upper()})*\n\n"
