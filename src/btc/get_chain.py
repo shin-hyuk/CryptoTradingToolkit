@@ -5,7 +5,7 @@ import os
 
 
 URL = "https://timechainindex.com/api/entities/entities"
-cred = credentials.Certificate(os.path.join(os.path.dirname(__file__), "../credentials.json"))
+cred = credentials.Certificate(os.path.join(os.path.dirname(__file__), "../../credentials.json"))
 initialize_app(cred)
 db = firestore.client()
 COLLECTION = "whale_activity"
