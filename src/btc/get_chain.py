@@ -85,7 +85,8 @@ def generate_message(recent_data, recent_date):
         msg += f"{'Exchange':<26}" if "CEXs" == tag else f"{'ETF/ETP':<26}"
         msg += f"{recent_date.strftime('%b %d').upper():<21}"
 
-        msg += f"{str(actual_offsets[0]) + ' Days Before':<21}{str(actual_offsets[1]) + ' Days Before':<21}\n"
+        msg += f"{(str(actual_offsets[0]) + (' Day Before' if actual_offsets[0] == 1 else ' Days Before')):<21}"
+        msg += f"{(str(actual_offsets[1]) + (' Day Before' if actual_offsets[1] == 1 else ' Days Before')):<21}\n"
         msg += "-" * 85 + "\n"
 
         for entity_name, balances in data.items():
