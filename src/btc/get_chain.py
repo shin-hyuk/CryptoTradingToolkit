@@ -1,6 +1,7 @@
 import requests
 from datetime import datetime, timedelta
 from firebase_admin import firestore, credentials, initialize_app
+import pandas as pd
 import os
 
 
@@ -9,14 +10,45 @@ cred = credentials.Certificate(os.path.join(os.path.dirname(__file__), "../../cr
 initialize_app(cred)
 db = firestore.client()
 COLLECTION = "whale_activity"
+TARGET_TAGS = ["CEXs", "ETFs/ETPs"]
 
-def get_data():
+def get_today_data():
     response = requests.get(URL)
     data = response.json()
     date = data['Date'].split(' ')[0]
     db.collection(COLLECTION).document(date).set(data)
 
     return data, date
+
+def get_month_data(end_date):
+    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    start_date = end_date - timedelta(days=30)
+
+    docs = db.collection(COLLECTION).stream()
+    month_data = []
+    for doc in docs:
+        doc_date = datetime.strptime(doc.id, '%Y-%m-%d')
+        if start_date <= doc_date <= end_date:
+            month_data.append(doc.to_dict())
+
+    formatted_data = []
+    for month in month_data:
+        date = datetime.strptime(month['Date'].split(' ')[0], '%Y-%m-%d')
+        tags = month['Tags']
+
+        for tag in tags:
+            if tag['Tag'] in TARGET_TAGS:
+                total_balance = sum(entity['RemainingBalance'] for entity in tag['Entities'])
+                # Aggregate by Tag only
+                formatted_data.append({
+                    'Date': date,
+                    'Tag': tag['Tag'],
+                    'TotalBalance': total_balance
+                })
+
+    formatted_df = pd.DataFrame(formatted_data)
+    return formatted_df
+
 
 def format_large_number_with_sign(value, add_sign=True):
     sign = "+" if value > 0 and add_sign else ""
@@ -49,10 +81,9 @@ def generate_message(recent_data, recent_date):
         files.append(closest_date)
         actual_offsets.append((recent_date - closest_date).days)
 
-    target_tags = ["CEXs", "ETFs/ETPs"]
-    column_data = {tag: {} for tag in target_tags}
+    column_data = {tag: {} for tag in TARGET_TAGS}
     for tag_data in recent_data.get("Tags"):
-        if tag_data["Tag"] in target_tags:
+        if tag_data["Tag"] in TARGET_TAGS:
             entities = {
                 entity.get("Entity"): [entity.get("RemainingBalance")]
                 for entity in tag_data.get("Entities")
@@ -105,6 +136,6 @@ def generate_message(recent_data, recent_date):
     return msg
 
 def get_chain():
-    data, date = get_data()
+    data, date = get_today_data()
     msg = generate_message(data, date)
     return msg

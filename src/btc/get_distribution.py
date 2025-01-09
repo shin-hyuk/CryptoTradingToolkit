@@ -1,8 +1,8 @@
 import re
 import pandas as pd
 from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 import requests
-from utils import telegram_utils as telegram
 
 URL = "https://bitinfocharts.com/bitcoin-distribution-history.html"
 
@@ -29,6 +29,29 @@ def merge_data(data):
     for new_range, old_ranges in NEW_RANGES.items():
         merged_data[new_range] = sum(data[old_range] for old_range in old_ranges if old_range in data)
     return merged_data
+
+def get_data_since(start_date):
+    data = get_data()
+
+    years_data = []
+    current_date = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date = datetime.now()
+
+    while current_date <= end_date:
+        date_str = current_date.strftime('%Y/%m/%d')
+        if date_str in data:
+            row = {"Date": date_str}
+            row.update(merge_data({row[0]: row[1] for row in data[date_str]}))
+            years_data.append(row)
+        current_date += timedelta(days=1)
+
+    df = pd.DataFrame(years_data)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df.sort_values('Date', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    
+    return df
+
 
 def get_data():
     response = requests.get(URL)
